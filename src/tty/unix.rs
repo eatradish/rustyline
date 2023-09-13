@@ -685,7 +685,8 @@ impl PosixRawReader {
         if n > 0 {
             return Ok(n as i32);
         }
-        let mut fds = [poll::PollFd::new(self.as_raw_fd(), PollFlags::POLLIN)];
+        let fd = self.as_raw_fd();
+        let mut fds = [poll::PollFd::new(fd, PollFlags::POLLIN)];
         let r = poll::poll(&mut fds, timeout_ms);
         match r {
             Ok(n) => Ok(n),
@@ -1351,25 +1352,25 @@ impl Term for PosixTerminal {
         // disable BREAK interrupt, CR to NL conversion on input,
         // input parity check, strip high bit (bit 8), output flow control
         raw.c_iflag &=
-            !(termios::BRKINT | termios::ICRNL | termios::INPCK | termios::ISTRIP | termios::IXON);
+            !(libc::BRKINT | libc::ICRNL | libc::INPCK | libc::ISTRIP | libc::IXON);
         // we don't want raw output, it turns newlines into straight line feeds
         // disable all output processing
         // raw.c_oflag = raw.c_oflag & !(OutputFlags::OPOST);
 
         // character-size mark (8 bits)
-        raw.c_cflag |= termios::CS8;
+        raw.c_cflag |= libc::CS8;
         // disable echoing, canonical mode, extended input processing and signals
-        raw.c_lflag &= !(termios::ECHO | termios::ICANON | termios::IEXTEN | termios::ISIG);
-        raw.c_cc[termios::VMIN] = 1; // One character-at-a-time input
-        raw.c_cc[termios::VTIME] = 0; // with blocking read
+        raw.c_lflag &= !(libc::ECHO | libc::ICANON | libc::IEXTEN | libc::ISIG);
+        raw.c_cc[libc::VMIN] = 1; // One character-at-a-time input
+        raw.c_cc[libc::VTIME] = 0; // with blocking read
 
         let mut key_map: HashMap<KeyEvent, Cmd> = HashMap::with_capacity(4);
-        map_key(&mut key_map, &raw, termios::VEOF, "VEOF", Cmd::EndOfFile);
-        map_key(&mut key_map, &raw, termios::VINTR, "VINTR", Cmd::Interrupt);
-        map_key(&mut key_map, &raw, termios::VQUIT, "VQUIT", Cmd::Interrupt);
-        map_key(&mut key_map, &raw, termios::VSUSP, "VSUSP", Cmd::Suspend);
+        map_key(&mut key_map, &raw, libc::VEOF, "VEOF", Cmd::EndOfFile);
+        map_key(&mut key_map, &raw, libc::VINTR, "VINTR", Cmd::Interrupt);
+        map_key(&mut key_map, &raw, libc::VQUIT, "VQUIT", Cmd::Interrupt);
+        map_key(&mut key_map, &raw, libc::VSUSP, "VSUSP", Cmd::Suspend);
 
-        tcsetattr(self.tty_in, termios::TCSADRAIN, &raw)?;
+        tcsetattr(self.tty_in, libc::TCSADRAIN, &raw)?;
 
         self.raw_mode.store(true, Ordering::SeqCst);
         // enable bracketed paste
